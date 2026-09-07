@@ -1,6 +1,10 @@
+-- Inventory & Sales Management
+-- orders / order_items = sales (stock out)
+-- purchases / purchase_items = stock in
+
 CREATE TABLE categories (
     category_id SERIAL PRIMARY KEY,
-    name VARCHAR(100) NOT NULL,
+    name VARCHAR(100) UNIQUE NOT NULL,
     description TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -25,28 +29,11 @@ CREATE TABLE suppliers (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE purchases (
-    purchase_id SERIAL PRIMARY KEY,
-    supplier_id INT REFERENCES suppliers(supplier_id) ON DELETE RESTRICT,
-    created_by_user_id INT REFERENCES users(user_id) ON DELETE SET NULL,
-    purchase_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    total_amount DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
-    status VARCHAR(20) DEFAULT 'Received' -- e.g., Ordered, Received, Cancelled
-);
-
-CREATE TABLE purchase_items (
-    purchase_item_id SERIAL PRIMARY KEY,
-    purchase_id INT REFERENCES purchases(purchase_id) ON DELETE CASCADE,
-    product_id INT REFERENCES products(product_id) ON DELETE RESTRICT,
-    quantity INT NOT NULL CHECK (quantity > 0),
-    unit_cost DECIMAL(10, 2) NOT NULL CHECK (unit_cost >= 0)
-);
-
 CREATE TABLE customers (
     customer_id SERIAL PRIMARY KEY,
     first_name VARCHAR(50) NOT NULL,
     last_name VARCHAR(50) NOT NULL,
-    email VARCHAR(100) UNIQUE NOT NULL,
+    email VARCHAR(100) UNIQUE,
     phone VARCHAR(20),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -54,32 +41,63 @@ CREATE TABLE customers (
 CREATE TABLE products (
     product_id SERIAL PRIMARY KEY,
     category_id INT REFERENCES categories(category_id) ON DELETE SET NULL,
+    supplier_id INT REFERENCES suppliers(supplier_id) ON DELETE SET NULL,
     name VARCHAR(150) NOT NULL,
     sku VARCHAR(50) UNIQUE NOT NULL,
     description TEXT,
     cost_price DECIMAL(10, 2) NOT NULL CHECK (cost_price >= 0),
     selling_price DECIMAL(10, 2) NOT NULL CHECK (selling_price >= 0),
     stock_quantity INT NOT NULL DEFAULT 0 CHECK (stock_quantity >= 0),
+    low_stock_threshold INT NOT NULL DEFAULT 10 CHECK (low_stock_threshold >= 0),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE purchases (
+    purchase_id SERIAL PRIMARY KEY,
+    supplier_id INT NOT NULL REFERENCES suppliers(supplier_id) ON DELETE RESTRICT,
+    created_by_user_id INT REFERENCES users(user_id) ON DELETE SET NULL,
+    purchase_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    total_amount DECIMAL(10, 2) NOT NULL DEFAULT 0.00 CHECK (total_amount >= 0),
+    status VARCHAR(20) NOT NULL DEFAULT 'Received',
+    CONSTRAINT chk_purchase_status CHECK (status IN ('Ordered', 'Received', 'Cancelled'))
+);
+
+CREATE TABLE purchase_items (
+    purchase_item_id SERIAL PRIMARY KEY,
+    purchase_id INT NOT NULL REFERENCES purchases(purchase_id) ON DELETE CASCADE,
+    product_id INT NOT NULL REFERENCES products(product_id) ON DELETE RESTRICT,
+    quantity INT NOT NULL CHECK (quantity > 0),
+    unit_cost DECIMAL(10, 2) NOT NULL CHECK (unit_cost >= 0)
+);
+
+-- Sales (stock out)
 CREATE TABLE orders (
     order_id SERIAL PRIMARY KEY,
-    customer_id INT REFERENCES customers(customer_id) ON DELETE CASCADE,
+    customer_id INT REFERENCES customers(customer_id) ON DELETE RESTRICT,
+    processed_by_user_id INT REFERENCES users(user_id) ON DELETE SET NULL,
     order_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    total_amount DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
-    status VARCHAR(20) DEFAULT 'Pending' -- e.g., Pending, Shipped, Delivered
+    total_amount DECIMAL(10, 2) NOT NULL DEFAULT 0.00 CHECK (total_amount >= 0),
+    status VARCHAR(20) NOT NULL DEFAULT 'Completed',
+    CONSTRAINT chk_order_status CHECK (status IN ('Pending', 'Completed', 'Cancelled'))
 );
 
 CREATE TABLE order_items (
     order_item_id SERIAL PRIMARY KEY,
-    order_id INT REFERENCES orders(order_id) ON DELETE CASCADE,
-    product_id INT REFERENCES products(product_id) ON DELETE RESTRICT,
+    order_id INT NOT NULL REFERENCES orders(order_id) ON DELETE CASCADE,
+    product_id INT NOT NULL REFERENCES products(product_id) ON DELETE RESTRICT,
     quantity INT NOT NULL CHECK (quantity > 0),
-    unit_price DECIMAL(10, 2) NOT NULL
+    unit_price DECIMAL(10, 2) NOT NULL CHECK (unit_price >= 0)
 );
 
 CREATE INDEX idx_products_category ON products(category_id);
+CREATE INDEX idx_products_supplier ON products(supplier_id);
 CREATE INDEX idx_purchases_supplier ON purchases(supplier_id);
+CREATE INDEX idx_purchases_date ON purchases(purchase_date);
 CREATE INDEX idx_orders_customer ON orders(customer_id);
 CREATE INDEX idx_orders_user ON orders(processed_by_user_id);
+CREATE INDEX idx_orders_date ON orders(order_date);
+
+CREATE VIEW v_low_stock AS
+SELECT product_id, name, sku, stock_quantity, low_stock_threshold
+FROM products
+WHERE stock_quantity <= low_stock_threshold;

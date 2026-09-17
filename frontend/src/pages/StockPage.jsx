@@ -1,0 +1,12 @@
+import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
+import { ArrowUpRight, Package, RefreshCw } from 'lucide-react'
+import { api, apiMessage } from '../api/client'
+import { Button, EmptyState, LoadingState, Notice, PageHeader, SearchBox } from '../components/UI'
+
+export default function StockPage() {
+  const [items, setItems] = useState([]); const [search, setSearch] = useState(''); const [lowOnly, setLowOnly] = useState(false); const [loading, setLoading] = useState(true); const [error, setError] = useState('')
+  async function load() { setLoading(true); try { const params = {}; if (search) params.search = search; if (lowOnly) params.low_stock = true; setItems((await api.get('/products/', { params })).data) } catch (e) { setError(apiMessage(e)) } finally { setLoading(false) } }
+  useEffect(() => { const timer = setTimeout(load, 250); return () => clearTimeout(timer) }, [search, lowOnly])
+  return <><PageHeader title="Stock levels" description="Monitor availability and spot replenishment needs." action={<Button variant="secondary" onClick={load}><RefreshCw size={16} />Refresh</Button>} /><div className="toolbar stock-toolbar"><SearchBox value={search} onChange={setSearch} placeholder="Search stock..." /><label className="check-filter"><input type="checkbox" checked={lowOnly} onChange={(e) => setLowOnly(e.target.checked)} /> Low stock only</label></div>{error && <Notice>{error}</Notice>}{loading ? <LoadingState /> : items.length === 0 ? <EmptyState title="No matching stock" message={lowOnly ? 'Everything is above its low-stock threshold.' : 'Add products to see inventory levels.'} /> : <div className="stock-grid">{items.map((item) => { const ratio = item.low_stock_threshold ? Math.min(item.stock_quantity / item.low_stock_threshold, 1) : 1; return <div className={`stock-card ${item.low_stock ? 'is-low' : ''}`} key={item.product_id}><div className="stock-card-head"><div className="product-icon"><Package size={18} /></div><span className={`stock-pill ${item.low_stock ? 'low' : 'ok'}`}>{item.low_stock ? 'Low stock' : 'Healthy'}</span></div><h3>{item.name}</h3><p>{item.sku}</p><div className="stock-number"><strong>{item.stock_quantity}</strong><span>units on hand</span></div><div className="progress"><i style={{ width: `${Math.max(ratio * 100, item.stock_quantity ? 8 : 0)}%` }} /></div><div className="stock-card-foot"><span>Threshold {item.low_stock_threshold}</span><Link to="/purchases">Restock <ArrowUpRight size={14} /></Link></div></div>})}</div>}</>
+}

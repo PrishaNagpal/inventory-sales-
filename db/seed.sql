@@ -1,4 +1,4 @@
--- TRUNCATE categories, users, suppliers, customers, products, purchases, purchase_items, orders, order_items RESTART IDENTITY CASCADE;
+TRUNCATE categories, users, suppliers, customers, products, purchases, purchase_items, orders, order_items RESTART IDENTITY CASCADE;
 
 -- 1. Insert Categories
 INSERT INTO categories (name, description) VALUES
@@ -11,12 +11,12 @@ INSERT INTO categories (name, description) VALUES
 ('Networking & Wireless', 'Wi-Fi adapters, routers, and ethernet switches'),
 ('Laptop Accessories', 'Cooling pads, laptop stands, sleeves, and cleaning kits');
 
--- 2. Insert Users
+-- 2. Insert Users (Default password for all seeded users: admin123)
 INSERT INTO users (username, email, password_hash, role) VALUES
-('rajesh_admin', 'rajesh.sharma@techstore.in', '$2a$12$eImiTXuWVxfM37uY4JANjOL.81F8Rkhv5gZ1557nJ8K1K.y', 'admin'),
-('priya_mgr', 'priya.patel@techstore.in', '$2a$12$eImiTXuWVxfM37uY4JANjOL.81F8Rkhv5gZ1557nJ8K1K.y', 'manager'),
-('amit_cashier', 'amit.verma@techstore.in', '$2a$12$eImiTXuWVxfM37uY4JANjOL.81F8Rkhv5gZ1557nJ8K1K.y', 'cashier'),
-('sneha_cashier', 'sneha.kulkarni@techstore.in', '$2a$12$eImiTXuWVxfM37uY4JANjOL.81F8Rkhv5gZ1557nJ8K1K.y', 'cashier');
+('rajesh_admin', 'rajesh.sharma@techstore.in', '$2b$12$nP6yhKfakOVri.MJJNH9.u6axtKGSIIzP4axheWm06zqNeJXOOyc6', 'admin'),
+('priya_mgr', 'priya.patel@techstore.in', '$2b$12$nP6yhKfakOVri.MJJNH9.u6axtKGSIIzP4axheWm06zqNeJXOOyc6', 'manager'),
+('amit_cashier', 'amit.verma@techstore.in', '$2b$12$nP6yhKfakOVri.MJJNH9.u6axtKGSIIzP4axheWm06zqNeJXOOyc6', 'cashier'),
+('sneha_cashier', 'sneha.kulkarni@techstore.in', '$2b$12$nP6yhKfakOVri.MJJNH9.u6axtKGSIIzP4axheWm06zqNeJXOOyc6', 'cashier');
 
 -- 3. Insert Suppliers
 INSERT INTO suppliers (company_name, contact_name, email, phone, address) VALUES
